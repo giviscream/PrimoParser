@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 
 namespace Domain
 {
@@ -11,6 +6,8 @@ namespace Domain
     {
         public string ClassName { get; set; }
         public string AssemblyName { get; set; }
+
+        public Guid SysID { get; set; }
 
         public List<SerializationItem> Properties { get; set; }
 
@@ -30,36 +27,40 @@ namespace Domain
 
             foreach (XElement subElementXml in xElement.Elements())
             {
-                if (subElementXml.Name.LocalName == "ClassName")
+                switch (subElementXml.Name.LocalName)
                 {
-                    serializationComponent.ClassName = subElementXml.Value;
-                }
-                else if (subElementXml.Name.LocalName == "AssemblyName")
-                {
-                    serializationComponent.AssemblyName = subElementXml.Value;
-                }
-                else if (subElementXml.Name.LocalName == "Properties")
-                {
-                    serializationComponent.Properties = new List<SerializationItem>();
+                    case "ClassName":
+                        serializationComponent.ClassName = subElementXml.Value;
+                        break;
+                    case "AssemblyName":
+                        serializationComponent.AssemblyName = subElementXml.Value;
+                        break;
+                    case "Properties":
+                        serializationComponent.Properties = new List<SerializationItem>();
 
-                    foreach (XElement propXml in subElementXml.Elements("SerializationItem"))
-                    {
-                        SerializationItem serializationItem = SerializationItem.ParseXml(propXml);
+                        foreach (XElement propXml in subElementXml.Elements("SerializationItem"))
+                        {
+                            SerializationItem serializationItem = SerializationItem.ParseXml(propXml);
 
-                        serializationComponent.Properties.Add(serializationItem);
-                    }
+                            serializationComponent.Properties.Add(serializationItem);
+
+                            if (serializationItem.Name == "ComponentID")
+                                serializationComponent.SysID = Guid.Parse(serializationItem.Value);
+                        }
+                        break;
+                    case "Components":
+                        serializationComponent.Components = new List<SerializationComponent>();
+
+                        foreach (XElement componentXml in subElementXml.Elements("SerializationComponent"))
+                        {
+                            SerializationComponent subComponent = SerializationComponent.ParseXml(componentXml);
+
+                            serializationComponent.Components.Add(subComponent);
+                        }
+                        break;
                 }
-                else if (subElementXml.Name.LocalName == "Components")
-                {
-                    serializationComponent.Components = new List<SerializationComponent>();
 
-                    foreach (XElement componentXml in subElementXml.Elements("SerializationComponent"))
-                    {
-                        SerializationComponent subComponent = SerializationComponent.ParseXml(componentXml);
-
-                        serializationComponent.Components.Add(subComponent);
-                    }
-                }
+                
             }
 
             return serializationComponent;

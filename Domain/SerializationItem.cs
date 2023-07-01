@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.Linq;
+﻿using System.Xml.Linq;
 
 namespace Domain
 {
@@ -27,14 +21,14 @@ namespace Domain
             serializationItem.Name = xElement.Element("Name")?.Value;
             serializationItem.IsListValue = Convert.ToBoolean(xElement.Element("IsListValue")?.Value);
 
-            System.Xml.Linq.XElement? itemValXml = xElement.Element("Value");
+            XElement? itemValXml = xElement.Element("Value");
 
             if (itemValXml == null)
             {
                 return serializationItem;
             }
 
-            serializationItem.Value = xElement.Element("Value")?.Value;
+            serializationItem.Value = itemValXml.Value;
 
             return serializationItem;
         }
