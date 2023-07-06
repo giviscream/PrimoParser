@@ -19,6 +19,8 @@ namespace Domain.ProjectHierarchy
         public Guid Id { get; private init; }
         public string Name { get; set; }
         public string Path { get; set; }
+
+        public string FullPath => System.IO.Path.Combine(ProjectVersion.Path, Path);
         public ContentItemType ContentItemType { get; set; }
 
         public SysState SysState { get; set; } = SysState.None;
@@ -53,7 +55,8 @@ namespace Domain.ProjectHierarchy
                     ContentItemType = ContentItemType.Folder,
                     Name = subDirectoryInfo.Name,
                     ChildContent = new List<ContentFile>(),
-                    Path = subDirectoryInfo.FullName,
+                    //Path = Uri.UnescapeDataString(new Uri(ProjectVersion.Path).MakeRelativeUri(new Uri(subDirectoryInfo.FullName)).ToString()).Replace('/', System.IO.Path.DirectorySeparatorChar),
+                    Path = System.IO.Path.GetRelativePath(ProjectVersion.Path, subDirectoryInfo.FullName),
                     ProjectVersion = this.ProjectVersion
                 };
 
@@ -61,7 +64,8 @@ namespace Domain.ProjectHierarchy
                 subDirContent.ChildContent.AddRange(GetDirectoryContent(subDirectoryInfo));
             }
 
-            var filesContent = directoryInfo.GetFiles().Select(x => new ContentFile() { ContentItemType = ContentItemType.File, Name = x.Name, Path = x.FullName, ProjectVersion = this.ProjectVersion });
+            //var filesContent = directoryInfo.GetFiles().Select(x => new ContentFile() { ContentItemType = ContentItemType.File, Name = x.Name, Path = Uri.UnescapeDataString(new Uri(ProjectVersion.Path).MakeRelativeUri(new Uri(x.FullName)).ToString().Replace('/', System.IO.Path.DirectorySeparatorChar)), ProjectVersion = this.ProjectVersion });
+            var filesContent = directoryInfo.GetFiles().Select(x => new ContentFile() { ContentItemType = ContentItemType.File, Name = x.Name, Path = System.IO.Path.GetRelativePath(ProjectVersion.Path, x.FullName), ProjectVersion = this.ProjectVersion });
             content.AddRange(filesContent);
 
             return content;
@@ -113,9 +117,9 @@ namespace Domain.ProjectHierarchy
 
         private bool IsModifiedLtwDoc(ContentFile baseContent)
         {
-
-            LtwDocument doc = LtwDocument.LoadFromXml(this.Path);
-            LtwDocument baseDoc = LtwDocument.LoadFromXml(baseContent.Path);
+           
+            LtwDocument doc = LtwDocument.LoadFromXml(this.FullPath);
+            LtwDocument baseDoc = LtwDocument.LoadFromXml(baseContent.FullPath);
 
             return doc.DocHash == baseDoc.DocHash;
         }

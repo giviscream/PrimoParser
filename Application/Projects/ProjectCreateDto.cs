@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Application.Projects
 {
-    public class ProjectDto
+    public class ProjectCreateDto
     {
         public string Name { get; set; }
     }

@@ -6,13 +6,19 @@ using Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Domain;
+using Projects = Application.Projects;
+using ProjectVersions = Application.ProjectVersions;
 using Application.Projects;
-//using Microsoft.AspNetCore.OpenApi;
+using MediatR;
+using Application.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddCors();
 builder.Services.AddDbContext<DataContext>(opt => opt.UseSqlite(@"Data Source=..\Storage\PrimoPrjsdb.db"), ServiceLifetime.Singleton);
+builder.Services.AddMediatR(AppDomain.CurrentDomain.GetAssemblies());
+builder.Services.AddScoped<IRequestDataExtractor<IFormFile?>, ProjectFileExtractor>();
+
 
 var app = builder.Build();
 
@@ -26,63 +32,50 @@ app.UseCors(builder =>
 );
 
 app.MapPost("/project", 
-    async (ProjectDto project, DataContext db) =>
+    async (IMediator mediator, ProjectCreateDto project) =>
     {
-        Project newProject = new Project()
-        {
-            Name = project.Name,
-            DateTime = DateTime.Now
-        };
-        
-        await db.Projects.AddAsync(newProject);
-        await db.SaveChangesAsync();
+        var result = await mediator.Send(new Projects.CreateProjectCommand() {Project = project});
 
-        return Results.Ok(newProject);
+        return Results.Ok(result.Value);
+    });
+
+app.MapGet("/project/{id}",
+    async (IMediator mediator, [FromRoute] Guid Id) =>
+    {
+        var result = await mediator.Send(new Projects.GetDetailsQuery() { Id = Id });
+
+        return Results.Ok(result.Value);
+
     });
 
 app.MapPost("/project/{id}/addversion",
-    async (HttpRequest request, [FromRoute]Guid Id, DataContext db) =>
+    async (IMediator mediator, IRequestDataExtractor<IFormFile?> reqFileExtractor, HttpRequest request, [FromRoute]Guid Id) =>
     {
-        var project = await db.Projects.FindAsync(Id);
+        var projectQueryRes = await mediator.Send(new Projects.GetDetailsQuery() { Id = Id });
 
-        if (project == null)
+        if (projectQueryRes.Value == null)
             return Results.BadRequest();
 
-        var lastVersionNum = await Task<int>.Run(() =>
-            {
-                var pVersions = db.ProjectVersions?.Where(x => x.Project.Id == Id);
+        Project project = projectQueryRes.Value;
 
-                return (pVersions == null || pVersions.Count() == 0) ? 0 : pVersions.Max(x => x.Num);
-            });
+        var lastVersionQueryRes = await mediator.Send(new ProjectVersions.GetLastProjectVersionQuery() { ProjectId = Id });
+        int lastVersionNum = lastVersionQueryRes.Value?.Num ?? 0;
 
+        var result = await reqFileExtractor.GetRequestData(request);
 
-        if (!request.HasFormContentType)
-            return Results.BadRequest();
+        if (!result.IsSuccess)
+            return Results.BadRequest(result.Value);
 
-        var form = await request.ReadFormAsync();
-
-        var prjFile = form.Files?.FirstOrDefault(x => x.Name == "ProjectName");
-
-        if (prjFile == null)
-            return Results.BadRequest("There is no project file");
-
-        if (prjFile.Length == 0)
-            return Results.BadRequest("File cannot be empty");
-
-        if (prjFile.ContentType != "application/zip" && prjFile.ContentType != "application/x-zip-compressed")
-            return Results.BadRequest("Incorrect project file. Waiting for .ZIP");
+        var prjFile = result.Value;
 
         string prjFilePath = Path.Combine(saveFolder, prjFile.FileName);
-
-        Directory.Delete(saveFolder, true);
-        Directory.CreateDirectory(saveFolder);
 
         using (FileStream prjFileStream = new FileStream(prjFilePath, FileMode.Create))
         {
             await prjFile.CopyToAsync(prjFileStream);
         }
         
-        string saveFolderPath = Path.Combine(Path.GetDirectoryName(prjFilePath), Path.GetFileNameWithoutExtension(prjFilePath));
+        string saveFolderPath = Path.Combine(Path.GetDirectoryName(prjFilePath), Guid.NewGuid().ToString(), Path.GetFileNameWithoutExtension(prjFilePath));
         await Task.Run(() => ZipFile.ExtractToDirectory(prjFilePath, saveFolderPath));
 
         ProjectVersion newVersion = new ProjectVersion()
@@ -102,39 +95,16 @@ app.MapPost("/project/{id}/addversion",
 
         ContentFile content = new ContentFile(newVersion);
 
-        await db.ProjectVersions.AddAsync(newVersion);
-        await db.ContentFiles.AddAsync(content);        
-        await db.SaveChangesAsync();
+        var savePrjVersionRes = await mediator.Send(new ProjectVersions.CreateVersionCommand() { NewVersion = newVersion });
+
+        //await db.ContentFiles.AddAsync(content);        
+        //await db.SaveChangesAsync();
 
 
         return Results.Ok(newVersion);
     }).Accepts<IFormFile>("multipart/form-data");
 
-app.MapGet("/project/{id}", 
-    async([FromRoute] Guid Id, DataContext db) =>
-    {
-        var project = await db.ProjectVersions.FirstOrDefaultAsync(x => x.Id == Id);
 
-        if (project == null)
-            return Results.NoContent();
-
-        return Results.Ok(project);
-
-    });
-
-app.MapGet("/workfile/{id}",
-    async ([FromRoute] Guid Id, DataContext db) =>
-    {
-        var contentFile = await db.ContentFiles.FirstOrDefaultAsync(x => x.Id == Id);
-
-        if (contentFile == null)
-            return Results.NoContent();
-
-        string filePath = contentFile.Path;
-        LtwDocument ltwDocument = LtwDocument.LoadFromXml(filePath);
-
-        return Results.Ok(ltwDocument);
-    });
 
 app.MapGet("/project/{id}/changes",
     async ([FromRoute] Guid Id, DataContext db) =>
@@ -154,7 +124,7 @@ app.MapGet("/project/{id}/changes",
 
         ContentFile curContentFile = await db.ContentFiles.FirstOrDefaultAsync(x => x.ProjectVersion.Id == curVersion.Id);
 
-        ContentFile prevContentFile = await db.ContentFiles.FirstOrDefaultAsync(x => x.ProjectVersion.Id == curVersion.Id);
+        ContentFile prevContentFile = await db.ContentFiles.FirstOrDefaultAsync(x => x.ProjectVersion.Id == prevVersion.Id);
 
         ContentFile diffContent = curContentFile.GetDifferentContent(prevContentFile);
 
@@ -165,9 +135,24 @@ app.MapGet("/project/{id}/changes",
 app.MapGet("/ltw/{id}",
     async ([FromRoute] Guid Id, DataContext db) =>
     {
-        ContentFile content = await db.ContentFiles.FirstOrDefaultAsync(x => x.Id == Id);
+        
+        ContentFile contentFile = await db.ContentFiles
+                                            .Include(pV => pV.ProjectVersion)
+                                            .FirstOrDefaultAsync(x => x.Id == Id);
+        
 
+        LtwDocument ltwDocument = LtwDocument.LoadFromXml(contentFile.FullPath);
+        
 
+        return Results.Ok(ltwDocument);
     });
+
+//app.MapGet("/version/{versionId}/ltw", 
+//    async([FromRoute] Guid Id
+//        , [FromQuery(Name ="Id")] Guid ltwId
+//        , DataContext db) =>
+//    {
+        
+//    });
 
 app.Run();
