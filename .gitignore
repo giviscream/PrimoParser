@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/Storage/PrimoPrjsdb.db-wal
+/Storage/PrimoPrjsdb.db-shm
+/Storage/PrimoPrjsdb.db
+/Storage
