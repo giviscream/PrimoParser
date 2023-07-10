@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Domain;
 using Projects = Application.Projects;
 using ProjectVersions = Application.ProjectVersions;
+using ContentFiles = Application.ContentFiles;
 using Application.Projects;
 using MediatR;
 using Application.Core;
@@ -54,52 +55,33 @@ app.MapPost("/project/{id}/addversion",
         var projectQueryRes = await mediator.Send(new Projects.GetDetailsQuery() { Id = Id });
 
         if (projectQueryRes.Value == null)
-            return Results.BadRequest();
+            return Results.BadRequest($"No project with Id = {Id}");
 
         Project project = projectQueryRes.Value;
 
         var lastVersionQueryRes = await mediator.Send(new ProjectVersions.GetLastProjectVersionQuery() { ProjectId = Id });
         int lastVersionNum = lastVersionQueryRes.Value?.Num ?? 0;
 
-        var result = await reqFileExtractor.GetRequestData(request);
+        var reqFileExtractorRes = await reqFileExtractor.GetRequestData(request);
 
-        if (!result.IsSuccess)
-            return Results.BadRequest(result.Value);
+        if (!reqFileExtractorRes.IsSuccess)
+            return Results.BadRequest(reqFileExtractorRes.Error);
 
-        var prjFile = result.Value;
-
+        IFormFile? prjFile = reqFileExtractorRes.Value;
+        
         string prjFilePath = Path.Combine(saveFolder, prjFile.FileName);
 
-        using (FileStream prjFileStream = new FileStream(prjFilePath, FileMode.Create))
-        {
-            await prjFile.CopyToAsync(prjFileStream);
-        }
-        
-        string saveFolderPath = Path.Combine(Path.GetDirectoryName(prjFilePath), Guid.NewGuid().ToString(), Path.GetFileNameWithoutExtension(prjFilePath));
-        await Task.Run(() => ZipFile.ExtractToDirectory(prjFilePath, saveFolderPath));
+        var savePrjVersionRes = await mediator.Send(new ProjectVersions.SaveNewProjectVersionCommand(prjFile.OpenReadStream(), lastVersionNum + 1, prjFilePath, project));
 
-        ProjectVersion newVersion = new ProjectVersion()
-        {
-            Num = lastVersionNum + 1,
-            Path = saveFolderPath,
-            DateTime = DateTime.Now,
-            Project = project
-        };
+        if (!savePrjVersionRes.IsSuccess)
+            return Results.BadRequest(savePrjVersionRes.Error);
 
-        string prjHierarchyStructFilePath = Path.Combine(saveFolderPath, "primo_hierarchy.json");
+        var newVersion = savePrjVersionRes.Value;
 
-        using (FileStream prjStructStream = new FileStream(prjHierarchyStructFilePath, FileMode.Create))
-        {
-            await JsonSerializer.SerializeAsync<ProjectVersion>(prjStructStream, newVersion);
-        }
+        var saveContentFileRes = await mediator.Send(new ContentFiles.CreateContentFileCommand() {ProjectVersion = newVersion});
 
-        ContentFile content = new ContentFile(newVersion);
-
-        var savePrjVersionRes = await mediator.Send(new ProjectVersions.CreateVersionCommand() { NewVersion = newVersion });
-
-        //await db.ContentFiles.AddAsync(content);        
-        //await db.SaveChangesAsync();
-
+        if (!saveContentFileRes.IsSuccess)
+            return Results.BadRequest(saveContentFileRes.Error);
 
         return Results.Ok(newVersion);
     }).Accepts<IFormFile>("multipart/form-data");
