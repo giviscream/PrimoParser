@@ -90,22 +90,12 @@ app.MapPost("/project/{id}/addversion",
 app.MapGet("/project/{id}/changes",
     async (IMediator mediator, [FromRoute] Guid Id, DataContext db) =>
     {
-        Project project = await db.Projects.FindAsync(Id);
+        var diffContentQueryRes = await mediator.Send(new GetProjectLastChangesQuery() { Id = Id });
 
-        var lastVersionQueryRes = await mediator.Send(new GetLastProjectVersionQuery() { ProjectId = Id });
-        int lastVersionNum = lastVersionQueryRes.Value?.Num ?? 0;
+        if (!diffContentQueryRes.IsSuccess)
+            return Results.BadRequest(diffContentQueryRes.Error);
 
-        ProjectVersion curVersion = await db.ProjectVersions.FirstOrDefaultAsync(x => x.Project.Id == project.Id && x.Num == lastVersionNum);
-
-        ProjectVersion prevVersion = await db.ProjectVersions.FirstOrDefaultAsync(x => x.Project.Id == project.Id && x.Num == lastVersionNum - 1);
-
-        ContentFile curContentFile = await db.ContentFiles.FirstOrDefaultAsync(x => x.ProjectVersion.Id == curVersion.Id);
-
-        ContentFile prevContentFile = await db.ContentFiles.FirstOrDefaultAsync(x => x.ProjectVersion.Id == prevVersion.Id);
-
-        ContentFile diffContent = curContentFile.GetDifferentContent(prevContentFile);
-
-        return Results.Ok(diffContent);
+        return Results.Ok(diffContentQueryRes.Value);
 
     });
 

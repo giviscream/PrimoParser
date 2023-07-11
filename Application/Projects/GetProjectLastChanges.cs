@@ -47,13 +47,15 @@ namespace Application.Projects
 
             ProjectVersion prevVersion = await _dataContext.ProjectVersions.FirstOrDefaultAsync(x => x.Project.Id == project.Id && x.Num == lastVersionNum - 1);
 
+            await _dataContext.ContentFiles.Where(x => x.ProjectVersion.Id == curVersion.Id || x.ProjectVersion.Id == prevVersion.Id).LoadAsync();
+
             ContentFile curContentFile = await _dataContext.ContentFiles.FirstOrDefaultAsync(x => x.ProjectVersion.Id == curVersion.Id);
 
             ContentFile prevContentFile = await _dataContext.ContentFiles.FirstOrDefaultAsync(x => x.ProjectVersion.Id == prevVersion.Id);
 
             ContentFile diffContent = curContentFile.GetDifferentContent(prevContentFile);
             
-            return null;
+            return Result<ContentFile>.Success(diffContent);
         }
     }
 }
