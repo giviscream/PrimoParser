@@ -12,12 +12,12 @@ using Application.Core;
 
 namespace Application.Projects
 {
-    public class CreateProjectCommand : IRequest<Result<Unit>>
+    public class CreateProjectCommand : IRequest<Result<Project>>
     {
         public ProjectCreateDto Project { get; set; }
     }
 
-    public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand, Result<Unit>>
+    public class CreateProjectCommandHandler : IRequestHandler<CreateProjectCommand, Result<Project>>
     {
         private readonly DataContext _dataContext;
 
@@ -26,7 +26,7 @@ namespace Application.Projects
             this._dataContext = dbContext;
         }
 
-        public async Task<Result<Unit>> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
+        public async Task<Result<Project>> Handle(CreateProjectCommand request, CancellationToken cancellationToken)
         {
             Project newProject = new Project()
             {
@@ -38,9 +38,9 @@ namespace Application.Projects
             bool succeed = await _dataContext.SaveChangesAsync() > 0;
 
             if (!succeed)
-                return Result<Unit>.Failure("Failed to create project");
+                return Result<Project>.Failure("Failed to create project");
 
-            return Result<Unit>.Success(Unit.Value);
+            return Result<Project>.Success(newProject);
         }
 
     }

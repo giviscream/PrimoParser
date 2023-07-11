@@ -28,11 +28,14 @@ namespace Application.Projects
 
         public async Task<Result<ContentFile>> Handle(GetProjectLastChangesQuery request, CancellationToken cancellationToken)
         {
-            /*
+            
             Project project = await _dataContext.Projects.FindAsync(request.Id);
 
-            var lastVersionQueryRes = await mediator.Send(new GetLastProjectVersionQuery() { ProjectId = request.Id });
-            int lastVersionNum = lastVersionQueryRes.Value?.Num ?? 0;
+            if (project == null)
+                return Result<ContentFile>.Failure("Project Not found");
+
+            var lastVersion = await _dataContext.ProjectVersions.GetLastVersionAsync(request.Id);
+            int lastVersionNum = lastVersion?.Num ?? 0;
 
             if (lastVersionNum == 0)
                 return Result<ContentFile>.Failure("No data");
@@ -49,7 +52,7 @@ namespace Application.Projects
             ContentFile prevContentFile = await _dataContext.ContentFiles.FirstOrDefaultAsync(x => x.ProjectVersion.Id == prevVersion.Id);
 
             ContentFile diffContent = curContentFile.GetDifferentContent(prevContentFile);
-            */
+            
             return null;
         }
     }

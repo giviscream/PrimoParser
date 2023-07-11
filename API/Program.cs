@@ -6,10 +6,9 @@ using Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Domain;
-using Projects = Application.Projects;
-using ProjectVersions = Application.ProjectVersions;
-using ContentFiles = Application.ContentFiles;
 using Application.Projects;
+using Application.ProjectVersions;
+using Application.ContentFiles;
 using MediatR;
 using Application.Core;
 
@@ -18,7 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors();
 builder.Services.AddDbContext<DataContext>(opt => opt.UseSqlite(@"Data Source=..\Storage\PrimoPrjsdb.db"), ServiceLifetime.Singleton);
 builder.Services.AddMediatR(AppDomain.CurrentDomain.GetAssemblies());
-builder.Services.AddScoped<IRequestDataExtractor<IFormFile?>, ProjectFileExtractor>();
+builder.Services.AddScoped<IRequestDataExtractor<IFormFile>, ProjectFileExtractor>();
 
 
 var app = builder.Build();
@@ -35,7 +34,7 @@ app.UseCors(builder =>
 app.MapPost("/project", 
     async (IMediator mediator, ProjectCreateDto project) =>
     {
-        var result = await mediator.Send(new Projects.CreateProjectCommand() {Project = project});
+        var result = await mediator.Send(new CreateProjectCommand() {Project = project});
 
         return Results.Ok(result.Value);
     });
@@ -43,7 +42,7 @@ app.MapPost("/project",
 app.MapGet("/project/{id}",
     async (IMediator mediator, [FromRoute] Guid Id) =>
     {
-        var result = await mediator.Send(new Projects.GetDetailsQuery() { Id = Id });
+        var result = await mediator.Send(new GetDetailsQuery() { Id = Id });
 
         return Results.Ok(result.Value);
 
@@ -52,14 +51,14 @@ app.MapGet("/project/{id}",
 app.MapPost("/project/{id}/addversion",
     async (IMediator mediator, IRequestDataExtractor<IFormFile?> reqFileExtractor, HttpRequest request, [FromRoute]Guid Id) =>
     {
-        var projectQueryRes = await mediator.Send(new Projects.GetDetailsQuery() { Id = Id });
+        var projectQueryRes = await mediator.Send(new GetDetailsQuery() { Id = Id });
 
         if (projectQueryRes.Value == null)
             return Results.BadRequest($"No project with Id = {Id}");
 
         Project project = projectQueryRes.Value;
 
-        var lastVersionQueryRes = await mediator.Send(new ProjectVersions.GetLastProjectVersionQuery() { ProjectId = Id });
+        var lastVersionQueryRes = await mediator.Send(new GetLastProjectVersionQuery() { ProjectId = Id });
         int lastVersionNum = lastVersionQueryRes.Value?.Num ?? 0;
 
         var reqFileExtractorRes = await reqFileExtractor.GetRequestData(request);
@@ -71,14 +70,14 @@ app.MapPost("/project/{id}/addversion",
         
         string prjFilePath = Path.Combine(saveFolder, prjFile.FileName);
 
-        var savePrjVersionRes = await mediator.Send(new ProjectVersions.SaveNewProjectVersionCommand(prjFile.OpenReadStream(), lastVersionNum + 1, prjFilePath, project));
+        var savePrjVersionRes = await mediator.Send(new SaveNewProjectVersionCommand(prjFile.OpenReadStream(), lastVersionNum + 1, prjFilePath, project));
 
         if (!savePrjVersionRes.IsSuccess)
             return Results.BadRequest(savePrjVersionRes.Error);
 
         var newVersion = savePrjVersionRes.Value;
 
-        var saveContentFileRes = await mediator.Send(new ContentFiles.CreateContentFileCommand() {ProjectVersion = newVersion});
+        var saveContentFileRes = await mediator.Send(new CreateContentFileCommand() {ProjectVersion = newVersion});
 
         if (!saveContentFileRes.IsSuccess)
             return Results.BadRequest(saveContentFileRes.Error);
@@ -89,16 +88,12 @@ app.MapPost("/project/{id}/addversion",
 
 
 app.MapGet("/project/{id}/changes",
-    async ([FromRoute] Guid Id, DataContext db) =>
+    async (IMediator mediator, [FromRoute] Guid Id, DataContext db) =>
     {
         Project project = await db.Projects.FindAsync(Id);
 
-        var lastVersionNum = await Task<int>.Run(() =>
-        {
-            var pVersions = db.ProjectVersions?.Where(x => x.Project.Id == Id);
-
-            return (pVersions == null || pVersions.Count() == 0) ? 0 : pVersions.Max(x => x.Num);
-        });
+        var lastVersionQueryRes = await mediator.Send(new GetLastProjectVersionQuery() { ProjectId = Id });
+        int lastVersionNum = lastVersionQueryRes.Value?.Num ?? 0;
 
         ProjectVersion curVersion = await db.ProjectVersions.FirstOrDefaultAsync(x => x.Project.Id == project.Id && x.Num == lastVersionNum);
 

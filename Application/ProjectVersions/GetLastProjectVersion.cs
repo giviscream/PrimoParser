@@ -25,12 +25,7 @@ namespace Application.ProjectVersions
         }
         public async Task<Result<ProjectVersion?>> Handle(GetLastProjectVersionQuery request, CancellationToken cancellationToken)
         {
-            var lastVersion = await Task<int>.Run(() =>
-            {
-                var pVersions = _dataContext.ProjectVersions?.Where(x => x.Project.Id == request.ProjectId);
-
-                return pVersions?.OrderByDescending(x => x.DateTime).FirstOrDefault();
-            });
+            var lastVersion = await _dataContext.ProjectVersions.GetLastVersionAsync(request.ProjectId);
 
             return Result<ProjectVersion?>.Success(lastVersion);
         }
