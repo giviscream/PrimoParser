@@ -5,20 +5,21 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Domain.DocumentComponents;
 
-namespace Domain
+namespace Domain.Components
 {
-    public class LtwDocument : ICloneable
+    public class Document : ICloneable
     {
         public SerializationRoot Root { get; private set; }
 
         public string DocHash { get; private set; }
 
         //to do: Correct Deserialization
-        public static LtwDocument LoadFromXml(string xmlFilePath)
+        public static Document LoadFromXml(string xmlFilePath)
         {
 
-            LtwDocument ltwDocument = new LtwDocument();
+            Document ltwDocument = new Document();
             XElement? xRoot = null;
 
             using (StreamReader reader = new StreamReader(xmlFilePath, true))
@@ -72,7 +73,7 @@ namespace Domain
 
         public object Clone()
         {
-            return this.MemberwiseClone();
+            return MemberwiseClone();
         }
     }
 }

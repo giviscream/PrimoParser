@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Domain.Components;
 
 namespace Domain.ProjectHierarchy
 {
@@ -118,8 +119,8 @@ namespace Domain.ProjectHierarchy
         private bool IsModifiedLtwDoc(ContentFile baseContent)
         {
            
-            LtwDocument doc = LtwDocument.LoadFromXml(this.FullPath);
-            LtwDocument baseDoc = LtwDocument.LoadFromXml(baseContent.FullPath);
+            Document doc = Document.LoadFromXml(this.FullPath);
+            Document baseDoc = Document.LoadFromXml(baseContent.FullPath);
 
             return doc.DocHash == baseDoc.DocHash;
         }

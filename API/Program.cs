@@ -5,12 +5,14 @@ using System.Text.Json;
 using Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
-using Domain;
 using Application.Projects;
 using Application.ProjectVersions;
 using Application.ContentFiles;
+using Application.Documents;
 using MediatR;
 using Application.Core;
+using AutoMapper;
+using Domain.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +20,7 @@ builder.Services.AddCors();
 builder.Services.AddDbContext<DataContext>(opt => opt.UseSqlite(@"Data Source=..\Storage\PrimoPrjsdb.db"), ServiceLifetime.Singleton);
 builder.Services.AddMediatR(AppDomain.CurrentDomain.GetAssemblies());
 builder.Services.AddScoped<IRequestDataExtractor<IFormFile>, ProjectFileExtractor>();
+builder.Services.AddAutoMapper(typeof(MappingProfiles));
 
 
 var app = builder.Build();
@@ -49,7 +52,11 @@ app.MapGet("/project/{id}",
     });
 
 app.MapPost("/project/{id}/addversion",
-    async (IMediator mediator, IRequestDataExtractor<IFormFile?> reqFileExtractor, HttpRequest request, [FromRoute]Guid Id) =>
+    async (IMediator mediator, 
+            IRequestDataExtractor<IFormFile?> reqFileExtractor,
+            IMapper _mapper,
+            HttpRequest request, 
+            [FromRoute]Guid Id) =>
     {
         var projectQueryRes = await mediator.Send(new GetDetailsQuery() { Id = Id });
 
@@ -82,13 +89,15 @@ app.MapPost("/project/{id}/addversion",
         if (!saveContentFileRes.IsSuccess)
             return Results.BadRequest(saveContentFileRes.Error);
 
-        return Results.Ok(newVersion);
+        var newVersionDto = _mapper.Map<ProjectVersionDto>(newVersion);
+
+        return Results.Ok(newVersionDto);
     }).Accepts<IFormFile>("multipart/form-data");
 
 
 
 app.MapGet("/project/{id}/changes",
-    async (IMediator mediator, [FromRoute] Guid Id, DataContext db) =>
+    async (IMediator mediator, [FromRoute] Guid Id) =>
     {
         var diffContentQueryRes = await mediator.Send(new GetProjectLastChangesQuery() { Id = Id });
 
@@ -99,20 +108,20 @@ app.MapGet("/project/{id}/changes",
 
     });
 
-app.MapGet("/ltw/{id}",
-    async ([FromRoute] Guid Id, DataContext db) =>
+app.MapGet("/document/{id}",
+    async (IMediator mediator, [FromRoute] Guid Id) =>
     {
-        
-        ContentFile contentFile = await db.ContentFiles
-                                            .Include(pV => pV.ProjectVersion)
-                                            .FirstOrDefaultAsync(x => x.Id == Id);
-        
+        var docQueryRes = await mediator.Send(new GetDocumentQuery() { Id = Id });
 
-        LtwDocument ltwDocument = LtwDocument.LoadFromXml(contentFile.FullPath);
-        
+        if (!docQueryRes.IsSuccess)
+            return Results.BadRequest(docQueryRes.Error);
 
-        return Results.Ok(ltwDocument);
+        return Results.Ok(docQueryRes.Value);
     });
+
+//app.MapGet("document/{id}/changes",
+//    async([FromRoute] Guid Id, )
+//    )
 
 //app.MapGet("/version/{versionId}/ltw", 
 //    async([FromRoute] Guid Id

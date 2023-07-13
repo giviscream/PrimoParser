@@ -3,21 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Domain.Components;
 
 namespace Domain.Analyzer
 {
     internal class LtwDocumentAnalyzer
     {
-        private readonly LtwDocument _ltwDocument;
+        private readonly Document _ltwDocument;
 
-        public LtwDocumentAnalyzer(LtwDocument ltwDocument)
+        public LtwDocumentAnalyzer(Document ltwDocument)
         {
             _ltwDocument = ltwDocument;
         }
 
-        public LtwDocument GetLtwVersionDifferences(LtwDocument newVersionLtwDocument)
+        public Document GetLtwVersionDifferences(Document newVersionLtwDocument)
         {
-            LtwDocument diffDocument = newVersionLtwDocument.Clone() as LtwDocument;
+            Document diffDocument = newVersionLtwDocument.Clone() as Document;
 
             if (diffDocument.DocHash == newVersionLtwDocument.DocHash)
                 return diffDocument;

@@ -1,6 +1,7 @@
 ﻿using System.Xml.Linq;
+using Domain.DocumentComponents;
 
-namespace Domain
+namespace Domain.Components
 {
     public class SerializationComponent
     {
@@ -53,14 +54,14 @@ namespace Domain
 
                         foreach (XElement componentXml in subElementXml.Elements("SerializationComponent"))
                         {
-                            SerializationComponent subComponent = SerializationComponent.ParseXml(componentXml);
+                            SerializationComponent subComponent = ParseXml(componentXml);
 
                             serializationComponent.Components.Add(subComponent);
                         }
                         break;
                 }
 
-                
+
             }
 
             return serializationComponent;

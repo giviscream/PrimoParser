@@ -15,7 +15,7 @@ namespace Persistence
         }
         public DataContext(DbContextOptions options) : base(options) 
         {
-            //Database.EnsureDeleted();
+            Database.EnsureDeleted();
             Database.EnsureCreated();
             //Database.Migrate();
         }
