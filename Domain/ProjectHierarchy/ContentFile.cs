@@ -1,11 +1,13 @@
-﻿using System;
+﻿using Domain.Analyzers;
+using Domain.Documents;
+using Domain.DocumentsChanges;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using Domain.Components;
 
 namespace Domain.ProjectHierarchy
 {
@@ -107,7 +109,7 @@ namespace Domain.ProjectHierarchy
                 else
                 {
                     if ((System.IO.Path.GetExtension(childContent.Path).ToLower() == ".ltw")
-                        && childContent.IsModifiedLtwDoc(baseChildContent))
+                        && childContent.IsModifiedDocument(baseChildContent))
                        childContent.SysState = SysState.Modified;
 
                     childContent.SetDifferences(baseChildContent);
@@ -116,13 +118,16 @@ namespace Domain.ProjectHierarchy
             }
         }
 
-        private bool IsModifiedLtwDoc(ContentFile baseContent)
+        private bool IsModifiedDocument(ContentFile baseContent)
         {
            
             Document doc = Document.LoadFromXml(this.FullPath);
             Document baseDoc = Document.LoadFromXml(baseContent.FullPath);
 
-            return doc.DocHash == baseDoc.DocHash;
+            DocumentChangesAnalyzer documentChangesAnalyzer = new DocumentChangesAnalyzer();
+            
+
+            return documentChangesAnalyzer.IsDifferent(baseDoc, doc);
         }
 
         private void SetDeleted(ContentFile baseContent)

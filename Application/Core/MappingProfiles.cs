@@ -15,6 +15,10 @@ namespace Application.Core
         {
             CreateMap<ProjectVersion, ProjectVersionDto>()
                 .ForMember(d => d.ProjectId, o => o.MapFrom(s => s.Id));
+
+            //CreateMap<ContentFile, ContentFileChangesAnalyzer>()
+            //    .ForMember(d => d.Id, o => o.Ignore())
+            //    .ForMember(d => d.ProjectVersionId, o => o.MapFrom(s => s.ProjectVersion.Id));
         }
     }
 }

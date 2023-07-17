@@ -54,7 +54,7 @@ app.MapGet("/project/{id}",
 app.MapPost("/project/{id}/addversion",
     async (IMediator mediator, 
             IRequestDataExtractor<IFormFile?> reqFileExtractor,
-            IMapper _mapper,
+            IMapper mapper,
             HttpRequest request, 
             [FromRoute]Guid Id) =>
     {
@@ -89,7 +89,7 @@ app.MapPost("/project/{id}/addversion",
         if (!saveContentFileRes.IsSuccess)
             return Results.BadRequest(saveContentFileRes.Error);
 
-        var newVersionDto = _mapper.Map<ProjectVersionDto>(newVersion);
+        var newVersionDto = mapper.Map<ProjectVersionDto>(newVersion);
 
         return Results.Ok(newVersionDto);
     }).Accepts<IFormFile>("multipart/form-data");
@@ -106,7 +106,7 @@ app.MapGet("/project/{id}/changes",
 
         return Results.Ok(diffContentQueryRes.Value);
 
-    });
+    }); 
 
 app.MapGet("/document/{id}",
     async (IMediator mediator, [FromRoute] Guid Id) =>
@@ -118,11 +118,21 @@ app.MapGet("/document/{id}",
 
         return Results.Ok(docQueryRes.Value);
     });
+/*
+app.MapGet("document/{id}/changes",
+    async(IMediator mediator, IMapper mapper, [FromRoute] Guid Id) =>
+    {
+        var contentFile = await mediator.Send(new GetContentFileQuery() { Id = Id });
 
-//app.MapGet("document/{id}/changes",
-//    async([FromRoute] Guid Id, )
-//    )
+        if (!contentFile.IsSuccess)
+            return Results.NotFound(contentFile.Error);
 
+        var obj = mapper.Map<ContentFileChangesAnalyzer>(contentFile.Value);
+
+        return Results.Ok(obj);
+
+    });
+*/
 //app.MapGet("/version/{versionId}/ltw", 
 //    async([FromRoute] Guid Id
 //        , [FromQuery(Name ="Id")] Guid ltwId
