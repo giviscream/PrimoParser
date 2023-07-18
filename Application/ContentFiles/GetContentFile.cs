@@ -26,7 +26,10 @@ namespace Application.ContentFiles
         }
         public async Task<Result<ContentFile>> Handle(GetContentFileQuery request, CancellationToken cancellationToken)
         {
-            ContentFile? contentFile = await _dataContext.ContentFiles.Include(x => x.ProjectVersion).FirstOrDefaultAsync(x => x.Id == request.Id);
+            ContentFile? contentFile = await _dataContext.ContentFiles
+                                                .Include(x => x.ProjectVersion)
+                                                .Include(x => x.ProjectVersion.Project)
+                                                .FirstOrDefaultAsync(x => x.Id == request.Id);
 
             if (contentFile == null)
                 return Result<ContentFile>.Failure($"Content file with Id = {request.Id} not found");

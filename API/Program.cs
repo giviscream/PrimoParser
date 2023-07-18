@@ -13,6 +13,9 @@ using MediatR;
 using Application.Core;
 using AutoMapper;
 using Domain.Components;
+using Domain.Documents;
+using Domain.Analyzers;
+using Domain.DocumentsChanges;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -118,21 +121,44 @@ app.MapGet("/document/{id}",
 
         return Results.Ok(docQueryRes.Value);
     });
-/*
+
 app.MapGet("document/{id}/changes",
     async(IMediator mediator, IMapper mapper, [FromRoute] Guid Id) =>
     {
-        var contentFile = await mediator.Send(new GetContentFileQuery() { Id = Id });
+        var contentFileQueryRes = await mediator.Send(new GetContentFileQuery() { Id = Id });
 
-        if (!contentFile.IsSuccess)
-            return Results.NotFound(contentFile.Error);
+        if (!contentFileQueryRes.IsSuccess)
+            return Results.NotFound(contentFileQueryRes.Error);
 
-        var obj = mapper.Map<ContentFileChangesAnalyzer>(contentFile.Value);
+        ContentFile contentFile = contentFileQueryRes.Value;
 
-        return Results.Ok(obj);
+        var documentQueryRes = await mediator.Send(new GetDocumentQuery() { Id = contentFile.Id });
+
+        if (!documentQueryRes.IsSuccess)
+            return Results.NotFound(documentQueryRes.Error);
+
+        Document document = documentQueryRes.Value;
+
+        var query = new GetProjectVersionDocumentQuery()
+        {
+            ProjectId = contentFile.ProjectVersion.Project.Id,
+            FilePath = contentFile.FullPath,
+            VersionNum = contentFile.ProjectVersion.Num - 1
+        };
+
+        var documentPrevVersionQueryRes = await mediator.Send(query);
+
+        if (documentPrevVersionQueryRes.IsSuccess)
+            return Results.NotFound(documentPrevVersionQueryRes.Error);
+
+        Document documentPrevVersion = documentPrevVersionQueryRes.Value;
+        
+        DocumentChanges documentChanges = new DocumentChangesAnalyzer().GetChanges(document, documentPrevVersion);
+
+        return Results.Ok(documentChanges);
 
     });
-*/
+
 //app.MapGet("/version/{versionId}/ltw", 
 //    async([FromRoute] Guid Id
 //        , [FromQuery(Name ="Id")] Guid ltwId

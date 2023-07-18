@@ -14,7 +14,7 @@ namespace Domain.Analyzers
         {
             DocumentChanges documentChanges = new DocumentChanges();
 
-            //documentChanges.Root 
+            documentChanges.Root = new SerializationRootChangesAnalyzer().GetChanges(newVersion.Root, prevVersion.Root);
 
             return documentChanges;
         }

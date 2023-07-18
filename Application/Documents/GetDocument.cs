@@ -32,7 +32,7 @@ namespace Application.Documents
                                             .FirstOrDefaultAsync(x => x.Id == request.Id);
 
             if (contentFile == null)
-                return Result<Document>.Failure($"Content file Not found Id={request.Id}");
+                return Result<Document>.Failure($"Content file  Id={request.Id} Not found");
 
             Document doc = Document.LoadFromXml(contentFile.FullPath);
 
