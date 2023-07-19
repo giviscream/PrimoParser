@@ -10,6 +10,7 @@ namespace Domain.DocumentComponentsChanges
     {
         public string Name { get; set; }
         public bool IsListValue { get; set; }
-        public string Value { get; set; }
+        public string NewValue { get; set; }
+        public string OldValue { get; set; }
     }
 }

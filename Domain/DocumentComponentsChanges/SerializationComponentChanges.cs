@@ -13,6 +13,7 @@ namespace Domain.DocumentComponentsChanges
         public string AssemblyName { get; set; }
 
         public Guid SysID { get; set; }
+        public SysState SysState { get; set; }
 
         public List<SerializationItemChanges> Properties { get; set; }
 

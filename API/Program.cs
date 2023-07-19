@@ -125,37 +125,12 @@ app.MapGet("/document/{id}",
 app.MapGet("document/{id}/changes",
     async(IMediator mediator, IMapper mapper, [FromRoute] Guid Id) =>
     {
-        var contentFileQueryRes = await mediator.Send(new GetContentFileQuery() { Id = Id });
+        var documentChangesQueryRes = await mediator.Send(new GetDocumentChangesQuery() { DocumentId = Id });
 
-        if (!contentFileQueryRes.IsSuccess)
-            return Results.NotFound(contentFileQueryRes.Error);
+        if (!documentChangesQueryRes.IsSuccess)
+            return Results.BadRequest(documentChangesQueryRes.Error);
 
-        ContentFile contentFile = contentFileQueryRes.Value;
-
-        var documentQueryRes = await mediator.Send(new GetDocumentQuery() { Id = contentFile.Id });
-
-        if (!documentQueryRes.IsSuccess)
-            return Results.NotFound(documentQueryRes.Error);
-
-        Document document = documentQueryRes.Value;
-
-        var query = new GetProjectVersionDocumentQuery()
-        {
-            ProjectId = contentFile.ProjectVersion.Project.Id,
-            FilePath = contentFile.FullPath,
-            VersionNum = contentFile.ProjectVersion.Num - 1
-        };
-
-        var documentPrevVersionQueryRes = await mediator.Send(query);
-
-        if (documentPrevVersionQueryRes.IsSuccess)
-            return Results.NotFound(documentPrevVersionQueryRes.Error);
-
-        Document documentPrevVersion = documentPrevVersionQueryRes.Value;
-        
-        DocumentChanges documentChanges = new DocumentChangesAnalyzer().GetChanges(document, documentPrevVersion);
-
-        return Results.Ok(documentChanges);
+        return Results.Ok(documentChangesQueryRes.Value);
 
     });
 

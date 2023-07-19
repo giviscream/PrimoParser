@@ -17,6 +17,27 @@ namespace Domain.Analyzers
             serializationComponentChanges.AssemblyName = newVersion.AssemblyName;
             serializationComponentChanges.ClassName = newVersion.ClassName;
 
+            serializationComponentChanges.Properties = newVersion.Properties.Join(prevVersion.Properties, 
+                                                            n => n.Name, 
+                                                            p => p.Name, 
+                                                            (n, p) => new SerializationItemChanges()
+                                                            {
+                                                                Name = n.Name,
+                                                                IsListValue= n.IsListValue,
+                                                                NewValue = n.Value,
+                                                                OldValue = p.Value
+                                                            }).ToList();
+            serializationComponentChanges.SysState = serializationComponentChanges.Properties.Any(x => x.NewValue != x.OldValue) ? SysState.Modified : SysState.None;
+
+            
+
+            return serializationComponentChanges;
+        }
+
+        private List<SerializationComponentChanges> MapSerializationComponents(List<SerializationComponent> newVersionCpmponents, List<SerializationComponent> oldVersionCpmponents)
+        {
+            List<SerializationComponentChanges> serializationComponentChanges = new List<SerializationComponentChanges>();
+
             return serializationComponentChanges;
         }
 
