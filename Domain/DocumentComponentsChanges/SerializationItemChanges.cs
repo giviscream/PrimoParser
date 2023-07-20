@@ -12,5 +12,6 @@ namespace Domain.DocumentComponentsChanges
         public bool IsListValue { get; set; }
         public string NewValue { get; set; }
         public string OldValue { get; set; }
+        public SysState SysState { get; set; } = SysState.None;
     }
 }

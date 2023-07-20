@@ -11,7 +11,7 @@ namespace Domain.DocumentComponentsChanges
     {
         public string ClassName { get; set; }
         public string AssemblyName { get; set; }
-
+        public decimal OrderNum { get; set; }
         public Guid SysID { get; set; }
         public SysState SysState { get; set; }
 

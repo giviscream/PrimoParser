@@ -4,39 +4,116 @@ using Domain.DocumentComponentsChanges;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Domain.Analyzers
 {
-    public class SerializationComponentChangesAnalyzer : ChangesAnalyzer<SerializationComponent, SerializationComponentChanges>
+    public class SerializationComponentChangesAnalyzer : ChangesAnalyzer<SerializationComponent?, SerializationComponentChanges?>
     {
-        public override SerializationComponentChanges GetChanges(SerializationComponent newVersion, SerializationComponent prevVersion)
+        public override SerializationComponentChanges? GetChanges(SerializationComponent? newVersion, SerializationComponent? prevVersion)
         {
-            SerializationComponentChanges serializationComponentChanges = new SerializationComponentChanges();
-            serializationComponentChanges.AssemblyName = newVersion.AssemblyName;
-            serializationComponentChanges.ClassName = newVersion.ClassName;
+            if (newVersion == null && prevVersion == null)
+                return null;
 
-            serializationComponentChanges.Properties = newVersion.Properties.Join(prevVersion.Properties, 
-                                                            n => n.Name, 
-                                                            p => p.Name, 
+            SerializationComponentChanges serializationComponentChanges = new SerializationComponentChanges();
+            serializationComponentChanges.AssemblyName = newVersion?.AssemblyName ?? prevVersion!.AssemblyName;
+            serializationComponentChanges.ClassName = newVersion?.ClassName ?? prevVersion!.ClassName;
+            serializationComponentChanges.SysID = newVersion?.SysID ?? prevVersion!.SysID;
+
+            if (newVersion != null && prevVersion != null)
+            {
+                serializationComponentChanges.Properties = newVersion.Properties.Join(prevVersion.Properties,
+                                                            n => n.Name,
+                                                            p => p.Name,
                                                             (n, p) => new SerializationItemChanges()
                                                             {
                                                                 Name = n.Name,
-                                                                IsListValue= n.IsListValue,
+                                                                IsListValue = n.IsListValue,
                                                                 NewValue = n.Value,
-                                                                OldValue = p.Value
+                                                                OldValue = p.Value,
+                                                                SysState = n.Value != p.Value ? SysState.Modified : SysState.None
                                                             }).ToList();
-            serializationComponentChanges.SysState = serializationComponentChanges.Properties.Any(x => x.NewValue != x.OldValue) ? SysState.Modified : SysState.None;
 
-            
+                serializationComponentChanges.SysState = serializationComponentChanges.Properties.Any(x => x.SysState == SysState.Modified) ? SysState.Modified : SysState.None;
 
-            return serializationComponentChanges;
-        }
+                serializationComponentChanges.Components = new List<SerializationComponentChanges>();
+                decimal stepNew = 0.0m;
+                foreach (var newComponent in newVersion.Components)
+                {
+                    SerializationComponent? prevComponent = prevVersion.Components?.FirstOrDefault(x => x.SysID == newComponent.SysID);
 
-        private List<SerializationComponentChanges> MapSerializationComponents(List<SerializationComponent> newVersionCpmponents, List<SerializationComponent> oldVersionCpmponents)
-        {
-            List<SerializationComponentChanges> serializationComponentChanges = new List<SerializationComponentChanges>();
+                    SerializationComponentChanges? changes = GetChanges(newComponent, prevComponent);
+                    changes.OrderNum = ++stepNew;
+                    changes.SysState = prevComponent == null ? SysState.New : SysState.None;
+
+                    serializationComponentChanges.Components.Add(changes);
+
+                }
+
+                decimal stepOld = 0.000000001m;
+                decimal curStep = 0.0m;
+                foreach (var prevComponent in prevVersion.Components)
+                {
+                    SerializationComponent? newComponent = newVersion.Components.FirstOrDefault(x => x.SysID == prevComponent.SysID);
+
+                    if (newComponent != null)
+                    {
+                        decimal orderNum = serializationComponentChanges.Components.First(x => x.SysID == newComponent.SysID).OrderNum;
+                        curStep = orderNum;
+                        stepOld = 0.000000001m;
+                        continue;
+                    }
+                    else
+                    {
+                        SerializationComponentChanges? changes = GetChanges(null, prevComponent);
+                        changes.SysState = SysState.Deleted;
+                        changes.OrderNum = curStep + stepOld;
+                        stepOld += 0.000000001m;
+
+                        serializationComponentChanges.Components.Add(changes);
+
+                    }
+
+                }
+
+                serializationComponentChanges.Components = serializationComponentChanges.Components.OrderBy(x => x.OrderNum).ToList();
+
+            }
+            else if (newVersion != null)
+            {
+                serializationComponentChanges.SysState = SysState.New;
+                serializationComponentChanges.Properties = newVersion.Properties.Select(x => new SerializationItemChanges()
+                                                                                        {
+                                                                                            Name = x.Name,
+                                                                                            IsListValue = x.IsListValue,
+                                                                                            NewValue = x.Value
+                                                                                        }).ToList();
+
+
+                foreach (var newComponent in newVersion.Components)
+                {
+                    SerializationComponentChanges? changes = GetChanges(newComponent, null);
+                    serializationComponentChanges.Components.Add(changes);
+
+                }
+            }
+            else if (prevVersion != null)
+            {
+                serializationComponentChanges.SysState = SysState.Deleted;
+                serializationComponentChanges.Properties = prevVersion.Properties.Select(x => new SerializationItemChanges()
+                                                                                        {
+                                                                                            Name = x.Name,
+                                                                                            IsListValue = x.IsListValue,
+                                                                                            OldValue = x.Value
+                                                                                        }).ToList();
+                foreach (var prevComponent in prevVersion.Components)
+                {
+                    SerializationComponentChanges? changes = GetChanges(null, prevComponent);
+                    serializationComponentChanges.Components.Add(changes);
+                }
+            }
 
             return serializationComponentChanges;
         }

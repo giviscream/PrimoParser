@@ -28,6 +28,8 @@ namespace Domain.Components
 
             foreach (XElement subElementXml in xElement.Elements())
             {
+                serializationComponent.Components = new List<SerializationComponent>();
+
                 switch (subElementXml.Name.LocalName)
                 {
                     case "ClassName":
@@ -50,8 +52,6 @@ namespace Domain.Components
                         }
                         break;
                     case "Components":
-                        serializationComponent.Components = new List<SerializationComponent>();
-
                         foreach (XElement componentXml in subElementXml.Elements("SerializationComponent"))
                         {
                             SerializationComponent subComponent = ParseXml(componentXml);
