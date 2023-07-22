@@ -21,7 +21,7 @@ namespace Domain.Analyzers
 
         public override bool IsDifferent(Document newVersion, Document prevVersion)
         {
-            return this.GetHash(newVersion.OriginalValue) != this.GetHash(newVersion.OriginalValue);
+            return this.GetHash(newVersion.OriginalValue) != this.GetHash(prevVersion.OriginalValue);
         }
     }
 }

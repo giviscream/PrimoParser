@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Domain.ProjectHierarchy
 {
-    public class ContentFileChangesAnalyzer
+    public class ContentFileChanges
     {
         public Guid Id { get; private init; }
         public string Name { get; set; }
@@ -19,9 +19,9 @@ namespace Domain.ProjectHierarchy
 
         public Guid ProjectVersionId { get; set; }
 
-        public List<ContentFileChangesAnalyzer> ChildContent { get; set; }
+        public List<ContentFileChanges> ChildContent { get; set; }
 
-        public ContentFileChangesAnalyzer()
+        public ContentFileChanges()
         {
             Id = Guid.NewGuid();
         }
