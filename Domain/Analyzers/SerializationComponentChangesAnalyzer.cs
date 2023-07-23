@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Domain.Analyzers
@@ -48,6 +50,7 @@ namespace Domain.Analyzers
                     changes.OrderNum = ++stepNew;
                     changes.SysState = prevComponent == null ? SysState.New : SysState.None;
 
+                    
                     serializationComponentChanges.Components.Add(changes);
 
                 }
@@ -76,6 +79,28 @@ namespace Domain.Analyzers
 
                     }
 
+                }
+
+                
+
+                var placementSwaps = prevVersion.Components 
+                            .Join(serializationComponentChanges.Components
+                                    .Where(s => s.SysState == SysState.None)
+                                    , c => c.SysID
+                                    , scCh => scCh.SysID
+                                    , (c, scCh) => new { scCh.SysID, scCh.OrderNum, scCh.SysState}).ToList();
+
+                foreach (var pSwap in placementSwaps)
+                {
+                    bool isPlacementSwap = pSwap.SysState == SysState.None
+                        && placementSwaps.Any(x => x.OrderNum < pSwap.OrderNum && placementSwaps.IndexOf(x) > placementSwaps.IndexOf(pSwap));
+
+                    if (isPlacementSwap)
+                    {
+                        var component = serializationComponentChanges.Components.First(x => x.SysID == pSwap.SysID);
+                        component.SysState = SysState.Modified;
+                    }
+                    
                 }
 
                 serializationComponentChanges.Components = serializationComponentChanges.Components.OrderBy(x => x.OrderNum).ToList();
