@@ -1,5 +1,6 @@
 ﻿using Application.Core;
 using Application.ProjectVersions;
+using Domain.Analyzers;
 using Domain.ProjectHierarchy;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +13,12 @@ using System.Threading.Tasks;
 
 namespace Application.Projects
 {
-    public class GetProjectLastChangesQuery : IRequest<Result<ContentFile>>
+    public class GetProjectLastChangesQuery : IRequest<Result<ContentFileChanges>>
     {
         public Guid Id { get; set; }
     }
 
-    public class GetProjectLastChangesHandler : IRequestHandler<GetProjectLastChangesQuery, Result<ContentFile>>
+    public class GetProjectLastChangesHandler : IRequestHandler<GetProjectLastChangesQuery, Result<ContentFileChanges>>
     {
         private readonly DataContext _dataContext;
 
@@ -26,22 +27,22 @@ namespace Application.Projects
             _dataContext = dataContext;
         }
 
-        public async Task<Result<ContentFile>> Handle(GetProjectLastChangesQuery request, CancellationToken cancellationToken)
+        public async Task<Result<ContentFileChanges>> Handle(GetProjectLastChangesQuery request, CancellationToken cancellationToken)
         {
             
             Project project = await _dataContext.Projects.FindAsync(request.Id);
 
             if (project == null)
-                return Result<ContentFile>.Failure("Project Not found");
+                return Result<ContentFileChanges>.Failure("Project Not found");
 
             var lastVersion = await _dataContext.ProjectVersions.GetLastVersionAsync(request.Id);
             int lastVersionNum = lastVersion?.Num ?? 0;
 
             if (lastVersionNum == 0)
-                return Result<ContentFile>.Failure("No data");
+                return Result<ContentFileChanges>.Failure("No data");
 
             if (lastVersionNum == 1)
-                return Result<ContentFile>.Failure("Nothing to compare");
+                return Result<ContentFileChanges>.Failure("Nothing to compare");
 
             ProjectVersion curVersion = await _dataContext.ProjectVersions.FirstOrDefaultAsync(x => x.Project.Id == project.Id && x.Num == lastVersionNum);
 
@@ -53,9 +54,11 @@ namespace Application.Projects
 
             ContentFile prevContentFile = await _dataContext.ContentFiles.FirstOrDefaultAsync(x => x.ProjectVersion.Id == prevVersion.Id);
 
-            ContentFile diffContent = curContentFile.GetDifferentContent(prevContentFile);
-            
-            return Result<ContentFile>.Success(diffContent);
+            //ContentFile diffContent = curContentFile.GetDifferentContent(prevContentFile);
+
+            ContentFileChanges changes = new ContentFileChangesAnalyzer().GetChanges(curContentFile, prevContentFile);
+
+            return Result<ContentFileChanges>.Success(changes);
         }
     }
 }

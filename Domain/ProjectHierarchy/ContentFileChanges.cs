@@ -8,7 +8,7 @@ namespace Domain.ProjectHierarchy
 {
     public class ContentFileChanges
     {
-        public Guid Id { get; private init; }
+        public Guid Id { get; set; }
         public string Name { get; set; }
         public string Path { get; set; }
 
@@ -21,9 +21,41 @@ namespace Domain.ProjectHierarchy
 
         public List<ContentFileChanges> ChildContent { get; set; }
 
-        public ContentFileChanges()
+        public ContentFileChanges() { }
+
+        public ContentFileChanges(ContentFile contentFile)
         {
-            Id = Guid.NewGuid();
+            SetHeaderData(contentFile);
+
+            if (contentFile.ChildContent != null)
+                SetChildrenData(contentFile);
+        }
+
+        public ContentFileChanges(ContentFile contentFile, SysState derivedState)
+        {
+            SetHeaderData(contentFile);
+
+            if (contentFile.ChildContent != null)
+                SetChildrenData(contentFile, derivedState);
+        }
+
+        public void SetHeaderData(ContentFile contentFile, SysState derivedState = SysState.None)
+        {
+            this.Id = contentFile.Id;
+            this.Name = contentFile.Name;
+            this.Path = contentFile.Path;
+            this.FullPath = contentFile.FullPath;
+            this.ContentItemType = contentFile.ContentItemType;
+            this.ProjectVersionId = contentFile.ProjectVersion.Id;
+
+            this.SysState = SysState.None;
+        }
+        public void SetChildrenData(ContentFile contentFile, SysState derivedState = SysState.None)
+        {
+            this.ChildContent = new List<ContentFileChanges>();
+            this.ChildContent.AddRange(
+                contentFile.ChildContent.Select(x => new ContentFileChanges(x) {SysState = derivedState })
+            );
         }
     }
 }

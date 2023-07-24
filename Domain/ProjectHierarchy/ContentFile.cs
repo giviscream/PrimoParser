@@ -26,7 +26,7 @@ namespace Domain.ProjectHierarchy
         public string FullPath => System.IO.Path.Combine(ProjectVersion.Path, Path);
         public ContentItemType ContentItemType { get; set; }
 
-        public SysState SysState { get; set; } = SysState.None;
+        //public SysState SysState { get; set; } = SysState.None;
 
         public ProjectVersion ProjectVersion { get; set; }
 
@@ -73,7 +73,7 @@ namespace Domain.ProjectHierarchy
 
             return content;
         }
-
+        /*
         public ContentFile GetDifferentContent(ContentFile baseContent)
         {
             ContentFile diffContent = this.MemberwiseClone() as ContentFile;
@@ -173,6 +173,7 @@ namespace Domain.ProjectHierarchy
                 childContent.SetChildrenState();
             }
         }
+        */
 
     }
 }

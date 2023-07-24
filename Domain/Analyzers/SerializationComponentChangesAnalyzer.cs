@@ -81,8 +81,6 @@ namespace Domain.Analyzers
 
                 }
 
-                
-
                 var placementSwaps = prevVersion.Components 
                             .Join(serializationComponentChanges.Components
                                     .Where(s => s.SysState == SysState.None)
