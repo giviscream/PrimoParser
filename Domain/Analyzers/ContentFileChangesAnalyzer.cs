@@ -13,32 +13,46 @@ namespace Domain.Analyzers
         public override ContentFileChanges GetChanges(ContentFile newVersion, ContentFile prevVersion)
         {
             ContentFileChanges changes = new ContentFileChanges();
-            changes.SetHeaderData(prevVersion);
+            changes.SetHeaderData(newVersion ?? prevVersion);
             changes.ChildContent = new List<ContentFileChanges>();
 
-            var newChildren = newVersion.ChildContent;
-            var prevChildren = prevVersion.ChildContent;
+            var newChildren = newVersion?.ChildContent ?? new List<ContentFile>();
+            var prevChildren = prevVersion?.ChildContent ?? new List<ContentFile>();
 
             var sameContentFiles = newChildren.Join(
-                                        prevChildren,
-                                        n => n.Path,
-                                        p => p.Path,
-                                        (n, p) => new ContentFileChanges(n) { SysState = IsDifferent(n, p) ? SysState.Modified : SysState.New}
-                                    );
-            var newContentFiles = newChildren.Where(n => !sameContentFiles.Any(s => s.Id == n.Id)).Select(x => new ContentFileChanges(x, SysState.New));
-            var delContentFiles = prevChildren.Where(p => !sameContentFiles.Any(s => s.Id == p.Id)).Select(x => new ContentFileChanges(x, SysState.Deleted));
+                                    prevChildren,
+                                    n => n.Path,
+                                    p => p.Path,
+                                    (n, p) => new { NewId = n.Id, PrevId = p.Id }
+
+                                ).ToList();
+
+            var newContentFiles = newChildren.Where(n => !sameContentFiles.Any(s => s.NewId == n.Id))
+                                            .Select(x => new ContentFileChanges(x, SysState.New)).ToList()!;
+
+            var delContentFiles = prevChildren.Where(p => !sameContentFiles.Any(s => s.PrevId == p.Id))
+                                            .Select(x => new ContentFileChanges(x, SysState.Deleted)).ToList()!;
 
             changes.ChildContent.AddRange(
                     newContentFiles
                     .Concat(delContentFiles)
                 );
 
-            foreach (var contentFile in sameContentFiles)
+            foreach (var cF in sameContentFiles)
             {
-                ContentFile sameNew = newChildren.First(x => x.Id == contentFile.Id);
-                ContentFile samePrev = prevChildren.First(x => x.Id == contentFile.Id);
+                ContentFile sameNew = newChildren.First(x => x.Id == cF.NewId);
+                ContentFile samePrev = prevChildren.First(x => x.Id == cF.PrevId);
 
-                changes.ChildContent.Add(new ContentFileChangesAnalyzer().GetChanges(sameNew, samePrev));
+                var subChanges = new ContentFileChangesAnalyzer().GetChanges(sameNew, samePrev);
+
+                bool isModified = Path.GetExtension(subChanges?.FullPath) == ".ltw" && IsDifferent(sameNew, samePrev);
+
+                if (isModified)
+                    subChanges.SysState = SysState.Modified;
+
+                if (subChanges != null)
+                    changes.ChildContent.Add(subChanges);
+
             }
 
             return changes;
@@ -54,5 +68,6 @@ namespace Domain.Analyzers
 
             return documentChangesAnalyzer.IsDifferent(newVersionDoc, prevVersionDoc);
         }
+
     }
 }

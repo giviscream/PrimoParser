@@ -68,7 +68,7 @@ namespace Domain.ProjectHierarchy
             }
 
             //var filesContent = directoryInfo.GetFiles().Select(x => new ContentFile() { ContentItemType = ContentItemType.File, Name = x.Name, Path = Uri.UnescapeDataString(new Uri(ProjectVersion.Path).MakeRelativeUri(new Uri(x.FullName)).ToString().Replace('/', System.IO.Path.DirectorySeparatorChar)), ProjectVersion = this.ProjectVersion });
-            var filesContent = directoryInfo.GetFiles().Select(x => new ContentFile() { ContentItemType = ContentItemType.File, Name = x.Name, Path = System.IO.Path.GetRelativePath(ProjectVersion.Path, x.FullName), ProjectVersion = this.ProjectVersion });
+            var filesContent = directoryInfo.GetFiles().Select(x => new ContentFile() { ContentItemType = ContentItemType.File, Name = x.Name, Path = System.IO.Path.GetRelativePath(ProjectVersion.Path, x.FullName), ProjectVersion = this.ProjectVersion, ChildContent = new() });
             content.AddRange(filesContent);
 
             return content;

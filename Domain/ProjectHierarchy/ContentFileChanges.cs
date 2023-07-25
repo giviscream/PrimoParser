@@ -33,7 +33,7 @@ namespace Domain.ProjectHierarchy
 
         public ContentFileChanges(ContentFile contentFile, SysState derivedState)
         {
-            SetHeaderData(contentFile);
+            SetHeaderData(contentFile, derivedState);
 
             if (contentFile.ChildContent != null)
                 SetChildrenData(contentFile, derivedState);
@@ -48,7 +48,7 @@ namespace Domain.ProjectHierarchy
             this.ContentItemType = contentFile.ContentItemType;
             this.ProjectVersionId = contentFile.ProjectVersion.Id;
 
-            this.SysState = SysState.None;
+            this.SysState = derivedState;
         }
         public void SetChildrenData(ContentFile contentFile, SysState derivedState = SysState.None)
         {
